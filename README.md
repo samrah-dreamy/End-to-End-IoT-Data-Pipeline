@@ -1,4 +1,3 @@
-````markdown
 # 🌡️ Temperature Prediction System (IoT Data Pipeline)
 
 End-to-end IoT data pipeline for temperature prediction using synthetic or real-world weather data.  
