@@ -23,7 +23,9 @@ from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
 from datetime import datetime
 
 import os
+
 import shutil
+# کپی کردن دیتا از cache.
 import kagglehub
 
 import warnings
@@ -32,6 +34,8 @@ warnings.filterwarnings('ignore')
 
 try:
     from skl2onnx import convert_sklearn
+    # initial_type = [('float_input', FloatTensorType([None, X.shape[1]]))
+    #                 # X.shape = (تعداد_سطرها , تعداد_ستون‌ها)
     from skl2onnx.common.data_types import FloatTensorType
     import onnxruntime as ort
 
@@ -74,6 +78,7 @@ class IoTDataPipeline:
         print("=" * 50)
 
         time = pd.date_range("2025-01-01", periods=n_samples, freq="h")
+
         hours = np.arange(n_samples)
 
         temperature = 20 + 8 * np.sin(2 * np.pi * hours / 24) + np.random.normal(0, 1.5, n_samples)
@@ -85,12 +90,14 @@ class IoTDataPipeline:
 
         self.raw_data = pd.DataFrame({
             "Timestamp": time,
+            # date time عه
             "Temperature": temperature,
             "Humidity": humidity,
             "Pressure": pressure
         })
 
         missing_indices = np.random.choice(n_samples, size=int(0.05 * n_samples), replace=False)
+        # df.loc[rows, columns] ادیت
         self.raw_data.loc[missing_indices, 'Temperature'] = np.nan
 
         outlier_indices = np.random.choice(n_samples, size=int(0.02 * n_samples), replace=False)
@@ -99,12 +106,14 @@ class IoTDataPipeline:
         self.data_source = "synthetic"
 
         if save_csv:
+            # index=False ایندکس رو نریز تو فایل CSV
             self.raw_data.to_csv("sensor_data_raw.csv", index=False)
             print(f"✓ Generated {n_samples} sensor readings")
             print(f"✓ Saved to: sensor_data_raw.csv")
 
         print(f"\nDataset Info:")
         print(f"  - Total samples: {len(self.raw_data)}")
+        # .isna() [t f t...] sum tedad mshe
         print(f"  - Missing values: {self.raw_data['Temperature'].isna().sum()}")
         print(f"  - Features: {list(self.raw_data.columns)}")
         print(f"\nFirst 5 rows:")
@@ -160,7 +169,9 @@ class IoTDataPipeline:
         print(f"  - Features: {list(self.raw_data.columns)}")
 
         print(f"\nFirst 5 rows:")
+        # 5 ردیف اول
         print(self.raw_data.head())
+        # tail()
         print()
 
         return self.raw_data
@@ -189,6 +200,7 @@ class IoTDataPipeline:
         Q1 = self.clean_data['Temperature'].quantile(0.25)
         Q3 = self.clean_data['Temperature'].quantile(0.75)
         IQR = Q3 - Q1
+        # فاصله ی چارک سوم تا اول 1.5
         lower_bound = Q1 - 1.5 * IQR
         upper_bound = Q3 + 1.5 * IQR
 
@@ -211,6 +223,9 @@ class IoTDataPipeline:
         print(f"✓ Applied moving average filter (window={window_size})")
 
         # 4. Feature engineering: create time-based features
+        # 2025-01-01 01:00:00+00:00 میخواد
+        # '2025-01-01 00:00:00' بود
+        # Nat
         self.clean_data['Timestamp'] = pd.to_datetime(
             self.clean_data['Timestamp'],
             utc=True,
@@ -221,6 +236,7 @@ class IoTDataPipeline:
         self.clean_data['Day'] = pd.to_datetime(self.clean_data['Timestamp']).dt.day
         print(f"✓ Created time-based features")
 
+        # shape (500, 4ستون)
         print(f"\nCleaned dataset shape: {self.clean_data.shape}")
         print(f"Statistics after cleaning:")
         print(self.clean_data[['Temperature', 'Humidity', 'Pressure']].describe())
@@ -254,10 +270,13 @@ class IoTDataPipeline:
         print(f"✓ Training samples: {len(self.X_train)}")
         print(f"✓ Testing samples: {len(self.X_test)}")
 
+        # یاد میگیره بعد نرمال میکنه میانگین و واریانس
         self.X_train_scaled = self.scaler.fit_transform(self.X_train)
+        # بالا یاد گرفت الان نرمال میکنه بر اساس یادگیری بالا
         self.X_test_scaled = self.scaler.transform(self.X_test)
         print(f"✓ Applied StandardScaler normalization")
 
+        # دنبال بهترین خط برای همه داده‌هاست.
         self.model = LinearRegression()
         self.model.fit(self.X_train_scaled, self.y_train)
 
@@ -267,6 +286,7 @@ class IoTDataPipeline:
 
         if ONNX_AVAILABLE:
             try:
+                # X.shape = (تعداد_سطرها , تعداد_ستون‌ها)
                 initial_type = [('float_input', FloatTensorType([None, X.shape[1]]))]
                 onnx_model = convert_sklearn(
                     self.model,
@@ -296,6 +316,7 @@ class IoTDataPipeline:
         print("=" * 50)
 
         if not ONNX_AVAILABLE:
+            # اگه ONNX نباشه از scikit-learn استفاده میکنه
             print("Using scikit-learn model for predictions (ONNX not available)")
             self.predictions = self.model.predict(self.X_test_scaled)
             print(f"✓ Generated {len(self.predictions)} predictions")
@@ -308,6 +329,7 @@ class IoTDataPipeline:
 
             input_name = ort_session.get_inputs()[0].name
             self.predictions = ort_session.run(
+                # اسم خروجی
                 None,
                 {input_name: self.X_test_scaled.astype(np.float32)}
             )[0]
@@ -365,10 +387,13 @@ class IoTDataPipeline:
         """
         Generate comprehensive visualization plots
         """
+        # 16 اینچ، ارتفاع 10 اینچ
         fig = plt.figure(figsize=(16, 10))
 
         # Plot 1: Actual vs Predicted
         ax1 = plt.subplot(2, 3, 1)
+        # alpha : شفافیت
+        # edgecolors: رنگ دور نقاط
         ax1.scatter(self.y_test, self.predictions, alpha=0.6, color='blue', edgecolors='black')
         ax1.plot([self.y_test.min(), self.y_test.max()],
                  [self.y_test.min(), self.y_test.max()],
@@ -378,28 +403,36 @@ class IoTDataPipeline:
         ax1.set_title('Actual vs Predicted Temperature', fontsize=12, fontweight='bold')
         ax1.legend()
         ax1.grid(True, alpha=0.3)
+        # پشت خطوط نمایش داده بشن
 
         # Plot 2: Residuals
         ax2 = plt.subplot(2, 3, 2)
+        # اختلاف تست و پیش بینی
         residuals = self.y_test - self.predictions
         ax2.scatter(self.predictions, residuals, alpha=0.6, color='green', edgecolors='black')
         ax2.axhline(y=0, color='r', linestyle='--', linewidth=2)
+        # مثبت: مدل کمتر پیش‌بینی کرده (y واقعی > y پیش‌بینی شده).
+        # منفی: مدل زیاد پیش‌بینی کرده (y واقعی < y پیش‌بینی شده).
         ax2.set_xlabel('Predicted Temperature (°C)', fontsize=11)
         ax2.set_ylabel('Residuals', fontsize=11)
         ax2.set_title('Residual Plot', fontsize=12, fontweight='bold')
         ax2.grid(True, alpha=0.3)
 
         # Plot 3: Prediction Error Distribution
+        # ایده اینه که ببینیم خطاها بیشتر سمت چپ (کمتر از پیش‌بینی) یا راست (بیشتر از پیش‌بینی) جمع شدن.
         ax3 = plt.subplot(2, 3, 3)
+        # bins=30: محور x به ۳۰ بازه تقسیم شده.
         ax3.hist(residuals, bins=30, color='purple', alpha=0.7, edgecolor='black')
         ax3.set_xlabel('Prediction Error (°C)', fontsize=11)
         ax3.set_ylabel('Frequency', fontsize=11)
         ax3.set_title('Error Distribution', fontsize=12, fontweight='bold')
+        # یه خط عمودی قرمز روی x=0 می‌کشه، که خطای صفر رو نشون می‌ده.
         ax3.axvline(x=0, color='r', linestyle='--', linewidth=2)
         ax3.grid(True, alpha=0.3)
 
         # Plot 4: Time Series - Raw vs Clean Temperature
         ax4 = plt.subplot(2, 3, 4)
+        #  200 تا اول کمتر
         sample_size = min(200, len(self.clean_data))
         ax4.plot(self.clean_data['Temperature'][:sample_size],
                  label='Raw Temperature', alpha=0.6, linewidth=1)
@@ -414,9 +447,17 @@ class IoTDataPipeline:
         # Plot 5: Feature Correlation Heatmap (simplified)
         ax5 = plt.subplot(2, 3, 5)
         feature_data = self.clean_data[['Temperature', 'Humidity', 'Pressure', 'Hour']].corr()
+        # این خط داره correlation بین ستون‌های مشخص‌شده رو حساب می‌کنه.
+        # .corr() ضریب همبستگی پِیر-وایز (pairwise correlation) بین ستون‌ها رو میده.
+        # خروجی feature_data یه DataFrame مربعی هست که هر خانه ضریب همبستگی بین دو ویژگیه، مقدارش بین -1 تا 1.
         im = ax5.imshow(feature_data, cmap='coolwarm', aspect='auto', vmin=-1, vmax=1)
+        # cmap='coolwarm' یعنی رنگ‌ها از آبی (منفی) تا قرمز (مثبت) تغییر می‌کنن.
+        # aspect='auto' باعث میشه نسبت طول و عرض سلول‌ها خودکار تنظیم بشه.
+        # vmin=-1, vmax=1 محدوده رنگ‌ها رو بین -۱ و ۱ قفل می‌کنه، چون correlation بین -۱ و ۱ه.
+        # im یه reference به تصویر ساخته‌شده میده، بعدا میشه برای colorbar ازش استفاده کرد.
         ax5.set_xticks(range(len(feature_data.columns)))
         ax5.set_yticks(range(len(feature_data.columns)))
+        # ha='right' راست چین
         ax5.set_xticklabels(feature_data.columns, rotation=45, ha='right')
         ax5.set_yticklabels(feature_data.columns)
         ax5.set_title('Feature Correlation Matrix', fontsize=12, fontweight='bold')
@@ -424,6 +465,7 @@ class IoTDataPipeline:
         # Add correlation values
         for i in range(len(feature_data.columns)):
             for j in range(len(feature_data.columns)):
+                # feature_data.iloc[i, j] مقدار همبستگی بین ویژگی i و j رو میده.
                 text = ax5.text(j, i, f'{feature_data.iloc[i, j]:.2f}',
                                 ha="center", va="center", color="black", fontsize=9)
 
@@ -444,6 +486,7 @@ class IoTDataPipeline:
 
         plt.suptitle(f'{self.project_name} - Model Evaluation Dashboard',
                      fontsize=16, fontweight='bold', y=0.995)
+        #  رعایت فاصله
         plt.tight_layout()
         plt.savefig('model_evaluation_plots.png', dpi=300, bbox_inches='tight')
         print("✓ Visualizations saved to: model_evaluation_plots.png")

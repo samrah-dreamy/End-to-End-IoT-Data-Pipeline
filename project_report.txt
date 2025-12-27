@@ -1,19 +1,19 @@
 
 PROJECT: Temperature_Prediction_System
-DATE: 2025-12-26 18:53:00
+DATE: 2025-12-27 18:52:36
 
 DATASET SUMMARY:
-  • Data Source: Real (Kaggle Weather Dataset)
-  • Total samples collected: 96453
-  • Samples after cleaning: 96409
+  • Data Source: Synthetic (Generated)
+  • Total samples collected: 500
+  • Samples after cleaning: 499
   • Features used: Humidity, Pressure, Hour
   • Target variable: Temperature
 
 MODEL PERFORMANCE:
   • Algorithm: Linear Regression
-  • R² Score: 0.4000
-  • RMSE: 7.4007°C
-  • MAE: 6.0263°C
+  • R² Score: 0.6059
+  • RMSE: 3.6758°C
+  • MAE: 3.1621°C
 
 DELIVERABLES:
   ✓ sensor_data_raw.csv (raw dataset)
@@ -24,5 +24,5 @@ DELIVERABLES:
 CONCLUSION:
 The IoT data pipeline successfully demonstrated end-to-end workflow
 from data acquisition through model deployment. The model achieved
-an R² score of 0.4000, indicating moderate predictive performance
+an R² score of 0.6059, indicating moderate predictive performance
 for temperature estimation based on humidity, pressure, and time.
