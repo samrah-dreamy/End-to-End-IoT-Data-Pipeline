@@ -346,5 +346,3 @@ This project demonstrates a complete, clean, and deploy-ready IoT ML pipeline fo
 ---
 
 🔥 **Built for learning, explaining, and shipping.**
-
-``` 
